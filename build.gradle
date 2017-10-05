@@ -8,11 +8,24 @@ buildscript {
 		// NOTE: You should declare only repositories that you need here
 		mavenLocal()
 		mavenCentral()
+        
+        jcenter()
 		maven { url "http://repo.spring.io/release" }
 		maven { url "http://repo.spring.io/milestone" }
 		maven { url "http://repo.spring.io/snapshot" }
+        maven { url "https://plugins.gradle.org/m2/" }
+
+        maven {
+            url "https://artifactory.cloudsoftcorp.com/artifactory/libs-release-local"
+            if (project.hasProperty('artifactory_user')) credentials {
+                username = "${artifactory_user}"
+                password = "${artifactory_password}"
+            }
+            name = "cloudsoft-repo"
+        }
 	}
 	dependencies {
+        classpath "org.jfrog.buildinfo:build-info-extractor-gradle:3.0.1"
 		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
 	}
 }
@@ -25,7 +38,8 @@ apply plugin: 'eclipse'
 apply plugin: 'idea'
 apply plugin: 'spring-boot'
 apply plugin: 'war'
-
+apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.artifactory'
 ext {
 	springCloudServiceBrokerVersion = '1.0.0.BUILD-SNAPSHOT'
 	baseName = 'apache-brookyn-service-broker'
@@ -75,4 +89,28 @@ dependencies {
 
 task wrapper(type: Wrapper) {
 	gradleVersion = '2.2'
+}
+
+if (project.hasProperty('artifactory_user'))
+  artifactory {
+    contextUrl = (project.hasProperty('artifactory_contextUrl') ? "${artifactory_contextUrl}" : 'https://artifactory.cloudsoftcorp.com/artifactory/')
+    publish {
+        repository {
+            repoKey = 'libs-release-local'
+            username = "${artifactory_user}"
+            password = "${artifactory_password}"
+            maven = true
+        }
+        defaults {
+            publications('mavenJava')
+        }
+    }
+  }
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.web
+        }
+    }
 }
